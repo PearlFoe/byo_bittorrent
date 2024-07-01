@@ -1,4 +1,4 @@
-module github.com/PearlFoe/byo_torrent
+module byo_bittorrent
 
 go 1.22.3
 
