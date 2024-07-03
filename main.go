@@ -1,9 +1,10 @@
 package main
 
 import (
+	"fmt"
+
 	"byo_bittorrent/torrent/metadata/file"
 	"byo_bittorrent/torrent/p2p"
-	"fmt"
 )
 
 func main() {
@@ -21,12 +22,12 @@ func main() {
 		fmt.Println("Ошибка формирования ссылки:", err)
 	}
 
-	tracker := &p2p.PeerNet{Url: url}
+	client := &p2p.Client{Url: url}
 
-	response, err := tracker.RequestPeers()
-	if err != nil {
+	
+	if err := client.RequestPeers(); err != nil {
 		fmt.Println("Ошибка получения пиров:", err)
 	}
 
-	fmt.Println(response)
+	fmt.Println(client.Peers)
 }
