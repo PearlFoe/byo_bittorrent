@@ -1,8 +1,8 @@
 package main
 
 import (
-	"byo_bittorrent/torrent/file"
-	"byo_bittorrent/torrent/tracker"
+	"byo_bittorrent/torrent/metadata/file"
+	"byo_bittorrent/torrent/p2p"
 	"fmt"
 )
 
@@ -21,7 +21,7 @@ func main() {
 		fmt.Println("Ошибка формирования ссылки:", err)
 	}
 
-	tracker := &tracker.Tracker{Url: url}
+	tracker := &p2p.PeerNet{Url: url}
 
 	response, err := tracker.RequestPeers()
 	if err != nil {
