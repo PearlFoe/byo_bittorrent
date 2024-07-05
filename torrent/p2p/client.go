@@ -2,9 +2,12 @@ package p2p
 
 import (
 	"encoding/binary"
+	"fmt"
 	"net"
 	"net/http"
 	"time"
+
+	"byo_bittorrent/torrent/metadata/file"
 
 	bencode "github.com/jackpal/bencode-go"
 )
@@ -18,6 +21,8 @@ type Client struct {
 	Url   string
 	Peers []Peer
 }
+
+
 
 func (c *Client) unmarshalPeers (peerBencode string) ([]Peer, error) {
 	const peerSize = 6 // 4 for IP, 2 for port
@@ -35,7 +40,7 @@ func (c *Client) unmarshalPeers (peerBencode string) ([]Peer, error) {
 	return peers, nil
 }
 
-func (c *Client) RequestPeers () (error) {
+func (c *Client) RequestPeers () error {
 	client := &http.Client{Timeout: time.Second * 60}
 
 	resp, err := client.Get(c.Url)
@@ -56,6 +61,38 @@ func (c *Client) RequestPeers () (error) {
 	}
 
 	c.Peers = peers
+
+	return nil
+}
+
+func (c *Client) SendHandshake (peer *Peer, torrent *file.TorrentFile) error {
+	/*
+	1. Вынести логику работы с хэндшейками в другой файл
+	2. Написать чтение ответа из хэндшейка
+	3. Написать нормальное tcp общение (поискать селект для этого говна)
+	*/
+	connection, err := net.DialTimeout("tcp", peer.String(), 30*time.Second)
+	if err != nil {
+		return err
+	}
+
+	handshake := &HandshakeRequest{
+		Pstr:     "BitTorrent protocol",
+		InfoHash: torrent.InfoHash,
+		PeerID:   torrent.PeerID,
+	}
+
+	_, err = connection.Write(handshake.Serialize())
+	if err != nil {
+		return err
+	}
+
+	res, err := Read(connection)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(res)
 
 	return nil
 }

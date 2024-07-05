@@ -29,5 +29,9 @@ func main() {
 		fmt.Println("Ошибка получения пиров:", err)
 	}
 
-	fmt.Println(client.Peers)
+	// fmt.Println(client.Peers)
+
+	if err := client.SendHandshake(&client.Peers[0], content); err != nil {
+		fmt.Println("Ошибка хендшейка:", err)
+	}
 }

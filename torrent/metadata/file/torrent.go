@@ -17,6 +17,7 @@ type TorrentFile struct {
 	PieceLength int
 	Length      int
 	Name        string
+	PeerID      [20]byte
 }
 
 func (t *TorrentFile) ReadFile(path string) error {
@@ -62,6 +63,8 @@ func (t *TorrentFile) BuildTrackerUrl() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	t.PeerID = peerID
 
 	params := url.Values{
 		"info_hash":  []string{string(t.InfoHash[:])},
