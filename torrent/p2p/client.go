@@ -3,6 +3,7 @@ package p2p
 import (
 	"encoding/binary"
 	"fmt"
+	"bytes"
 	"net"
 	"net/http"
 	"time"
@@ -66,11 +67,6 @@ func (c *Client) RequestPeers () error {
 }
 
 func (c *Client) SendHandshake (peer *Peer, torrent *file.TorrentFile) error {
-	/*
-	1. Вынести логику работы с хэндшейками в другой файл
-	2. Написать чтение ответа из хэндшейка
-	3. Написать нормальное tcp общение (поискать селект для этого говна)
-	*/
 	connection, err := net.DialTimeout("tcp", peer.String(), 30*time.Second)
 	if err != nil {
 		return err
@@ -87,12 +83,14 @@ func (c *Client) SendHandshake (peer *Peer, torrent *file.TorrentFile) error {
 		return err
 	}
 
-	res, err := Read(connection)
+	response, err := Read(connection)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(res)
+	if !bytes.Equal(handshake.InfoHash[:], response.InfoHash[:]){
+		return fmt.Errorf("expected infohash %x but got %x", handshake.InfoHash, response.InfoHash)
+	}
 
 	return nil
 }
