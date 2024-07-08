@@ -20,6 +20,7 @@ type PeersResponse struct {
 
 type Client struct {
 	Url   string
+	Torrent *file.TorrentFile
 	Peers []Peer
 }
 
@@ -64,20 +65,14 @@ func (c *Client) RequestPeers() error {
 	return nil
 }
 
-func (c *Client) SendHandshake(peer *Peer, torrent *file.TorrentFile) error {
-	connection, err := net.DialTimeout("tcp", peer.String(), 30*time.Second)
-	if err != nil {
-		return err
-	}
-
+func (c *Client) handshake(connection net.Conn) error {
 	handshake := &Handshake{
 		Pstr:     "BitTorrent protocol",
-		InfoHash: torrent.InfoHash,
-		PeerID:   torrent.PeerID,
+		InfoHash: c.Torrent.InfoHash,
+		PeerID:   c.Torrent.PeerID,
 	}
-
-	_, err = connection.Write(handshake.Serialize())
-	if err != nil {
+	
+	if _, err := connection.Write(handshake.Serialize()); err != nil {
 		return err
 	}
 
@@ -90,7 +85,52 @@ func (c *Client) SendHandshake(peer *Peer, torrent *file.TorrentFile) error {
 		return fmt.Errorf("expected infohash %x but got %x", handshake.InfoHash, response.InfoHash)
 	}
 
-	// Логика получения данных и сохранения на диск
+	return nil
+}
+
+
+func (c *Client) unchoke(connection net.Conn) error {
+	message, err := ReadMessage(connection)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(message)
+
+	return nil
+}
+
+
+func (c *Client) Start(peer *Peer) error {
+	/*
+	[+] Засунуть ссылку на торрент файл как новое поле структуры клиента
+	[+] Завести сквозной сокет, который будет шарится между методами клиента
+	[] Подключить чтение сообщения от другого пира
+	...
+	[] Работа с файлами
+	*/
+
+	fmt.Println("Connecting to peer", peer.String())
+
+	// TODO: понять почему не работает с net.Dial
+	connection, err := net.DialTimeout("tcp", peer.String(), 30*time.Second)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Connected to peer", peer.String())
+
+
+	if err := c.handshake(connection); err != nil {
+		return err
+	}
+
+	fmt.Println("Handshaked peer", peer.String())
+
+
+	if err := c.unchoke(connection); err != nil {
+		return err
+	}
 
 	return nil
 }

@@ -22,15 +22,15 @@ func main() {
 		fmt.Println("Ошибка формирования ссылки:", err)
 	}
 
-	client := &p2p.Client{Url: url}
+	client := &p2p.Client{Url: url, Torrent: content}
 
 	
 	if err := client.RequestPeers(); err != nil {
 		fmt.Println("Ошибка получения пиров:", err)
 	}
 
-	if err := client.SendHandshake(&client.Peers[0], content); err != nil {
-		fmt.Println("Ошибка хендшейка:", err)
+	if err := client.Start(&client.Peers[0]); err != nil {
+		fmt.Println("Ошибка подключения к пиру:", err)
 	}
 	
 }
