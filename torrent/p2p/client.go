@@ -1,9 +1,9 @@
 package p2p
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
-	"bytes"
 	"net"
 	"net/http"
 	"time"
@@ -14,7 +14,7 @@ import (
 )
 
 type PeersResponse struct {
-	Interval int 	`bencode:"interval"`
+	Interval int    `bencode:"interval"`
 	Peers    string `bencode:"peers"`
 }
 
@@ -23,9 +23,7 @@ type Client struct {
 	Peers []Peer
 }
 
-
-
-func (c *Client) unmarshalPeers (peerBencode string) ([]Peer, error) {
+func (c *Client) unmarshalPeers(peerBencode string) ([]Peer, error) {
 	const peerSize = 6 // 4 for IP, 2 for port
 
 	peerByte := []byte(peerBencode)
@@ -34,14 +32,14 @@ func (c *Client) unmarshalPeers (peerBencode string) ([]Peer, error) {
 	peers := make([]Peer, numPeers)
 
 	for i := 0; i < numPeers; i++ {
-        offset := i * peerSize
-        peers[i].IP = net.IP(peerByte[offset : offset+4])
-        peers[i].Port = binary.BigEndian.Uint16(peerByte[offset+4 : offset+6])
-    }
+		offset := i * peerSize
+		peers[i].IP = net.IP(peerByte[offset : offset+4])
+		peers[i].Port = binary.BigEndian.Uint16(peerByte[offset+4 : offset+6])
+	}
 	return peers, nil
 }
 
-func (c *Client) RequestPeers () error {
+func (c *Client) RequestPeers() error {
 	client := &http.Client{Timeout: time.Second * 60}
 
 	resp, err := client.Get(c.Url)
@@ -52,7 +50,7 @@ func (c *Client) RequestPeers () error {
 
 	trackerResponse := &PeersResponse{}
 
-	if err := bencode.Unmarshal(resp.Body, trackerResponse); err != nil{
+	if err := bencode.Unmarshal(resp.Body, trackerResponse); err != nil {
 		return err
 	}
 
@@ -66,13 +64,13 @@ func (c *Client) RequestPeers () error {
 	return nil
 }
 
-func (c *Client) SendHandshake (peer *Peer, torrent *file.TorrentFile) error {
+func (c *Client) SendHandshake(peer *Peer, torrent *file.TorrentFile) error {
 	connection, err := net.DialTimeout("tcp", peer.String(), 30*time.Second)
 	if err != nil {
 		return err
 	}
 
-	handshake := &HandshakeRequest{
+	handshake := &Handshake{
 		Pstr:     "BitTorrent protocol",
 		InfoHash: torrent.InfoHash,
 		PeerID:   torrent.PeerID,
@@ -83,14 +81,16 @@ func (c *Client) SendHandshake (peer *Peer, torrent *file.TorrentFile) error {
 		return err
 	}
 
-	response, err := Read(connection)
+	response, err := ReadHandshake(connection)
 	if err != nil {
 		return err
 	}
 
-	if !bytes.Equal(handshake.InfoHash[:], response.InfoHash[:]){
+	if !bytes.Equal(handshake.InfoHash[:], response.InfoHash[:]) {
 		return fmt.Errorf("expected infohash %x but got %x", handshake.InfoHash, response.InfoHash)
 	}
+
+	// Логика получения данных и сохранения на диск
 
 	return nil
 }

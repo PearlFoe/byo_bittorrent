@@ -5,14 +5,13 @@ import (
 	"io"
 )
 
-type HandshakeRequest struct {
+type Handshake struct {
 	Pstr     string
 	InfoHash [20]byte
 	PeerID   [20]byte
 }
 
-
-func (h *HandshakeRequest) Serialize() []byte {
+func (h *Handshake) Serialize() []byte {
 	buf := make([]byte, len(h.Pstr)+49)
 	buf[0] = byte(len(h.Pstr))
 	curr := 1
@@ -23,16 +22,15 @@ func (h *HandshakeRequest) Serialize() []byte {
 	return buf
 }
 
-
-func New(InfoHash, PeerID [20]byte) *HandshakeRequest {
-	return &HandshakeRequest{
-		Pstr: "BitTorrent protocol",
+func New(InfoHash, PeerID [20]byte) *Handshake {
+	return &Handshake{
+		Pstr:     "BitTorrent protocol",
 		InfoHash: InfoHash,
-		PeerID: PeerID,
+		PeerID:   PeerID,
 	}
 }
 
-func Read(r io.Reader) (*HandshakeRequest, error) {
+func ReadHandshake(r io.Reader) (*Handshake, error) {
 	lengthBuf := make([]byte, 1)
 	_, err := io.ReadFull(r, lengthBuf)
 	if err != nil {
@@ -56,7 +54,7 @@ func Read(r io.Reader) (*HandshakeRequest, error) {
 	copy(infoHash[:], handshakeBuf[pstrlen+8:pstrlen+8+20])
 	copy(peerID[:], handshakeBuf[pstrlen+8+20:])
 
-	h := HandshakeRequest{
+	h := Handshake{
 		Pstr:     string(handshakeBuf[0:pstrlen]),
 		InfoHash: infoHash,
 		PeerID:   peerID,
