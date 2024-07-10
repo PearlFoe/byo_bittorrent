@@ -65,7 +65,7 @@ func (c *Client) RequestPeers() error {
 	return nil
 }
 
-func (c *Client) handshake(connection net.Conn) error {
+func (c *Client) sendHandshake(connection net.Conn) error {
 	handshake := &Handshake{
 		Pstr:     "BitTorrent protocol",
 		InfoHash: c.Torrent.InfoHash,
@@ -89,7 +89,7 @@ func (c *Client) handshake(connection net.Conn) error {
 }
 
 
-func (c *Client) bitfield(connection net.Conn) (*[]byte, error) {
+func (c *Client) waitBitfield(connection net.Conn) (*[]byte, error) {
 	message, err := ReadMessage(connection)
 	if err != nil {
 		return nil, nil
@@ -103,7 +103,7 @@ func (c *Client) bitfield(connection net.Conn) (*[]byte, error) {
 }
 
 
-func (c *Client) unchoke(connection net.Conn) error {
+func (c *Client) waitUnchoke(connection net.Conn) error {
 	message, err := ReadMessage(connection)
 	if err != nil {
 		return err
@@ -117,11 +117,20 @@ func (c *Client) unchoke(connection net.Conn) error {
 }
 
 
+func (c *Client) sendInterested(connection net.Conn) error {
+	message := &Message{ID: MsgInterested}
+	if err := SendMessage(connection, message); err != nil {
+		return err
+	}
+	return nil
+}
+
+
 func (c *Client) Start(peer *Peer) error {
 	/*
 	[+] Засунуть ссылку на торрент файл как новое поле структуры клиента
 	[+] Завести сквозной сокет, который будет шарится между методами клиента
-	[] Подключить чтение сообщения от другого пира
+	[+] Подключить чтение сообщения от другого пира
 	...
 	[] Работа с файлами
 	*/
@@ -137,21 +146,26 @@ func (c *Client) Start(peer *Peer) error {
 	fmt.Println("Connected to peer", peer.String())
 
 
-	if err := c.handshake(connection); err != nil {
+	if err := c.sendHandshake(connection); err != nil {
 		return err
 	}
 
 	fmt.Println("Handshaked peer", peer.String())
 
+	// if err := c.sendInterested(connection); err != nil {
+	// 	return err
+	// }
 
-	bitfield, err := c.bitfield(connection)
+	// fmt.Println("Sent interested")
+
+	bitfield, err := c.waitBitfield(connection)
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("Recieved bitfield", bitfield)
 
-	if err := c.unchoke(connection); err != nil {
+	if err := c.waitUnchoke(connection); err != nil {
 		return err
 	}
 
