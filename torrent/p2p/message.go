@@ -25,6 +25,18 @@ type Message struct {
 }
 
 
+func (m *Message) Serialize() []byte {
+	length := uint32(len(m.Payload) + 1) // +1 for id
+	buf := make([]byte, length + 4)  // +4 for message length value
+
+	binary.BigEndian.PutUint32(buf[:4], length)
+	buf[4] = byte(m.ID)
+	copy(buf[5:], m.Payload)
+
+	return buf
+}
+
+
 func ReadMessage(r io.Reader) (*Message, error) {
 	lengthBuffer := make([]byte, 4)
 	if _, err := io.ReadFull(r, lengthBuffer); err != nil {
@@ -49,4 +61,11 @@ func ReadMessage(r io.Reader) (*Message, error) {
 	}
 
 	return &message, nil
+}
+
+func SendMessage(w io.Writer, m *Message) error {
+	if _, err := w.Write(m.Serialize()); err != nil {
+		return err
+	}
+	return nil
 }
