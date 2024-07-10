@@ -89,13 +89,29 @@ func (c *Client) handshake(connection net.Conn) error {
 }
 
 
+func (c *Client) bitfield(connection net.Conn) (*[]byte, error) {
+	message, err := ReadMessage(connection)
+	if err != nil {
+		return nil, nil
+	}
+
+	if message.ID != MsgBitfield {
+		return nil, fmt.Errorf("recieved invalid message code %d, expected %d", message.ID, MsgBitfield)
+	}
+
+	return &message.Payload, nil
+}
+
+
 func (c *Client) unchoke(connection net.Conn) error {
 	message, err := ReadMessage(connection)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(message)
+	if message.ID != MsgUnchoke {
+		return fmt.Errorf("recieved invalid message code %d, expected %d", message.ID, MsgUnchoke)
+	}
 
 	return nil
 }
@@ -128,9 +144,18 @@ func (c *Client) Start(peer *Peer) error {
 	fmt.Println("Handshaked peer", peer.String())
 
 
+	bitfield, err := c.bitfield(connection)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Recieved bitfield", bitfield)
+
 	if err := c.unchoke(connection); err != nil {
 		return err
 	}
+
+	fmt.Println("Unchoked")
 
 	return nil
 }
