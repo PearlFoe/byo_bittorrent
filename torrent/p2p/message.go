@@ -21,7 +21,7 @@ const (
 
 type Message struct {
 	ID      messageID
-	Payload []byte
+	Payload Bitfield
 }
 
 
