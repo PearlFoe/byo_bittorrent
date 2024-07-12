@@ -22,7 +22,7 @@ func (h *Handshake) Serialize() []byte {
 	return buf
 }
 
-func New(InfoHash, PeerID [20]byte) *Handshake {
+func NewHandshake(InfoHash, PeerID [20]byte) *Handshake {
 	return &Handshake{
 		Pstr:     "BitTorrent protocol",
 		InfoHash: InfoHash,

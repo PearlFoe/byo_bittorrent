@@ -21,7 +21,7 @@ const (
 
 type Message struct {
 	ID      messageID
-	Payload Bitfield
+	Payload []byte
 }
 
 
@@ -62,6 +62,7 @@ func ReadMessage(r io.Reader) (*Message, error) {
 
 	return &message, nil
 }
+
 
 func SendMessage(w io.Writer, m *Message) error {
 	if _, err := w.Write(m.Serialize()); err != nil {

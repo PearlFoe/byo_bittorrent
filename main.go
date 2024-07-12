@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-
+	"math/rand"
 	"byo_bittorrent/torrent/metadata/file"
 	"byo_bittorrent/torrent/p2p"
 )
@@ -29,8 +29,8 @@ func main() {
 		fmt.Println("Ошибка получения пиров:", err)
 	}
 
-	if err := client.Start(&client.Peers[0]); err != nil {
-		fmt.Println("Ошибка подключения к пиру:", err)
+	if err := client.Start(&client.Peers[rand.Intn(len(client.Peers))]); err != nil {
+		fmt.Println(err)
 	}
 	
 }

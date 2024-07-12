@@ -13,6 +13,8 @@ import (
 	bencode "github.com/jackpal/bencode-go"
 )
 
+const MaxBlockSize = 16384
+
 type PeersResponse struct {
 	Interval int    `bencode:"interval"`
 	Peers    string `bencode:"peers"`
@@ -89,7 +91,7 @@ func (c *Client) sendHandshake(connection net.Conn) error {
 }
 
 
-func (c *Client) waitBitfield(connection net.Conn) (*[]byte, error) {
+func (c *Client) waitBitfield(connection net.Conn) (*Bitfield, error) {
 	message, err := ReadMessage(connection)
 	if err != nil {
 		return nil, nil
@@ -99,7 +101,8 @@ func (c *Client) waitBitfield(connection net.Conn) (*[]byte, error) {
 		return nil, fmt.Errorf("recieved invalid message code %d, expected %d", message.ID, MsgBitfield)
 	}
 
-	return &message.Payload, nil
+	bf := Bitfield(message.Payload)
+	return &bf, nil
 }
 
 
@@ -126,6 +129,20 @@ func (c *Client) sendInterested(connection net.Conn) error {
 }
 
 
+func (c *Client) requestBlock(connection net.Conn, index, begin, length int) ([]byte, error) {
+	payload := make([]byte, 12)
+	binary.BigEndian.PutUint32(payload[0:4], uint32(index))
+	binary.BigEndian.PutUint32(payload[4:8], uint32(begin))
+	binary.BigEndian.PutUint32(payload[8:12], uint32(length))
+
+	message := &Message{ID: MsgRequest, Payload: payload}
+	if err := SendMessage(connection, message); err != nil {
+		return nil, err
+	}
+	return message.Payload, nil
+}
+
+
 func (c *Client) Start(peer *Peer) error {
 	/*
 	[+] Засунуть ссылку на торрент файл как новое поле структуры клиента
@@ -138,7 +155,7 @@ func (c *Client) Start(peer *Peer) error {
 	fmt.Println("Connecting to peer", peer.String())
 
 	// TODO: понять почему не работает с net.Dial
-	connection, err := net.DialTimeout("tcp", peer.String(), 30*time.Second)
+	connection, err := net.DialTimeout("tcp", peer.String(), 60*time.Second)
 	if err != nil {
 		return err
 	}
@@ -151,25 +168,34 @@ func (c *Client) Start(peer *Peer) error {
 	}
 
 	fmt.Println("Handshaked peer", peer.String())
-
-	// if err := c.sendInterested(connection); err != nil {
-	// 	return err
-	// }
-
-	// fmt.Println("Sent interested")
-
+	
 	bitfield, err := c.waitBitfield(connection)
 	if err != nil {
 		return err
 	}
-
+	
 	fmt.Println("Recieved bitfield", bitfield)
-
+	
 	if err := c.waitUnchoke(connection); err != nil {
 		return err
 	}
-
+	
 	fmt.Println("Unchoked")
+	
+	if err := c.sendInterested(connection); err != nil {
+		return err
+	}
+
+	fmt.Println("Sent interested")
+
+	
+	block, err := c.requestBlock(connection, 1, 0, MaxBlockSize)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Sent block request")
+	fmt.Println(block)
 
 	return nil
 }
