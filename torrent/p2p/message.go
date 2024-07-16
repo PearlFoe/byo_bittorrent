@@ -1,8 +1,9 @@
 package p2p
 
 import (
-	"io"
 	"encoding/binary"
+	"fmt"
+	"io"
 )
 
 type messageID uint8
@@ -34,6 +35,20 @@ func (m *Message) Serialize() []byte {
 	copy(buf[5:], m.Payload)
 
 	return buf
+}
+
+func (m *Message) ParsePiece(pieceIndex int) ([]byte, error) {
+	if m.ID != MsgPiece {
+		return nil, fmt.Errorf("recieved invalid message code %d, expected %d", m.ID, MsgPiece)
+	}
+
+	index := int(binary.BigEndian.Uint32(m.Payload[:4]))
+	if index != pieceIndex {
+		return nil,  fmt.Errorf("recieved invalid piece index %d, expected %d", index, pieceIndex)
+	}
+	data := m.Payload[8:]
+
+	return data, nil
 }
 
 

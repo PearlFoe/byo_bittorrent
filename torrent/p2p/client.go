@@ -7,7 +7,7 @@ import (
 	"net"
 	"net/http"
 	"time"
-
+	"crypto/sha1"
 	"byo_bittorrent/torrent/metadata/file"
 
 	bencode "github.com/jackpal/bencode-go"
@@ -24,7 +24,23 @@ type Client struct {
 	Url   string
 	Torrent *file.TorrentFile
 	Peers []Peer
+	Choked bool
 }
+
+
+type Block struct {
+	Index int
+	Length int
+	Hash [20]byte
+	Buffer []byte
+}
+
+
+func (b *Block) CheckHash(buffer []byte) bool {
+	hash := sha1.Sum(buffer)
+	return bytes.Equal(hash[:], b.Hash[:])
+}
+
 
 func (c *Client) unmarshalPeers(peerBencode string) ([]Peer, error) {
 	const peerSize = 6 // 4 for IP, 2 for port
@@ -129,7 +145,7 @@ func (c *Client) sendInterested(connection net.Conn) error {
 }
 
 
-func (c *Client) requestBlock(connection net.Conn, index, begin, length int) ([]byte, error) {
+func (c *Client) requestBlock(connection net.Conn, index, begin, length int) error {
 	payload := make([]byte, 12)
 	binary.BigEndian.PutUint32(payload[0:4], uint32(index))
 	binary.BigEndian.PutUint32(payload[4:8], uint32(begin))
@@ -137,25 +153,72 @@ func (c *Client) requestBlock(connection net.Conn, index, begin, length int) ([]
 
 	message := &Message{ID: MsgRequest, Payload: payload}
 	if err := SendMessage(connection, message); err != nil {
-		return nil, err
+		return err
 	}
-	return message.Payload, nil
+
+	return nil
+}
+
+
+func (c *Client) downloadBlock(connection net.Conn, block *Block) error {
+	if err := c.requestBlock(connection, block.Index, 0, MaxBlockSize); err != nil {
+		return err
+	}
+
+	fmt.Println("Requested block")
+	begin := 0
+	buff := make([]byte, block.Length)
+
+	for begin < block.Length - 1{
+		message, err := ReadMessage(connection)
+		if err != nil {
+			return err
+		}
+		fmt.Println("Recieved message", message.ID)
+
+		switch message.ID {
+			case MsgChoke:
+				c.Choked = true
+			case MsgUnchoke:
+				c.Choked = false
+			default:
+		}
+
+		if c.Choked {
+			continue
+		}
+
+		if message.ID == MsgPiece {
+			piece, err := message.ParsePiece(block.Index)
+			if err != nil {
+				return err
+			}
+			copy(buff[begin:], piece)
+			begin += len(piece)
+
+			fmt.Println(begin, len(buff), block.Length)
+
+			if err := c.requestBlock(connection, block.Index, begin, MaxBlockSize); err != nil {
+				return err
+			}
+			fmt.Println("Requested block")
+		}
+	}
+
+	if block.CheckHash(buff) {
+		fmt.Println("Coppied buff to block buffer")
+		copy(block.Buffer, buff)
+	}
+
+	return nil
 }
 
 
 func (c *Client) Start(peer *Peer) error {
-	/*
-	[+] Засунуть ссылку на торрент файл как новое поле структуры клиента
-	[+] Завести сквозной сокет, который будет шарится между методами клиента
-	[+] Подключить чтение сообщения от другого пира
-	...
-	[] Работа с файлами
-	*/
-
 	fmt.Println("Connecting to peer", peer.String())
 
 	// TODO: понять почему не работает с net.Dial
-	connection, err := net.DialTimeout("tcp", peer.String(), 60*time.Second)
+	connection, err := net.Dial("tcp", peer.String()) //, 60*time.Second)
 	if err != nil {
 		return err
 	}
@@ -167,6 +230,8 @@ func (c *Client) Start(peer *Peer) error {
 		return err
 	}
 
+	c.Choked = true 
+
 	fmt.Println("Handshaked peer", peer.String())
 	
 	bitfield, err := c.waitBitfield(connection)
@@ -176,10 +241,12 @@ func (c *Client) Start(peer *Peer) error {
 	
 	fmt.Println("Recieved bitfield", bitfield)
 	
+	// TODO: Find out why i get EOF sometimes
 	if err := c.waitUnchoke(connection); err != nil {
 		return err
 	}
-	
+
+	c.Choked = false
 	fmt.Println("Unchoked")
 	
 	if err := c.sendInterested(connection); err != nil {
@@ -188,14 +255,18 @@ func (c *Client) Start(peer *Peer) error {
 
 	fmt.Println("Sent interested")
 
-	
-	block, err := c.requestBlock(connection, 1, 0, MaxBlockSize)
-	if err != nil {
-		return err
+	hash := c.Torrent.PieceHashes[0]
+	b := &Block{
+		Index: 0,
+		Length: c.Torrent.CalculatePieceSize(0), 
+		Hash: hash,
 	}
 
-	fmt.Println("Sent block request")
-	fmt.Println(block)
+	if err := c.downloadBlock(connection, b); err != nil {
+		return err
+	}
+	
+	fmt.Println("Finished download")
 
 	return nil
 }

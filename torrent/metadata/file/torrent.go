@@ -78,3 +78,17 @@ func (t *TorrentFile) BuildTrackerUrl() (string, error) {
 	base.RawQuery = params.Encode()
 	return base.String(), nil
 }
+
+func (t *TorrentFile) CalculateBoundsForPiece(index int) (begin int, end int) {
+	begin = index * t.PieceLength
+	end = begin + t.PieceLength
+	if end > t.Length {
+		end = t.Length
+	}
+	return begin, end
+}
+
+func (t *TorrentFile) CalculatePieceSize(index int) int {
+	begin, end := t.CalculateBoundsForPiece(index)
+	return end - begin
+}
