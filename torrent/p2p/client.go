@@ -11,11 +11,6 @@ import (
 
 const MaxBlockSize = 16384
 
-type PeersBencode struct {
-	Interval int    `bencode:"interval"`
-	Peers    string `bencode:"peers"`
-}
-
 type Client struct {
 	Torrent *file.TorrentFile
 	Choked  bool
