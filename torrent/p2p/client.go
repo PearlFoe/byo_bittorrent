@@ -174,7 +174,7 @@ func (c *Client) downloadBlock(connection net.Conn, block *Block) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println("Recieved message", message.ID)
+		// fmt.Println("Recieved message", message.ID)
 
 		switch message.ID {
 			case MsgChoke:
@@ -196,17 +196,17 @@ func (c *Client) downloadBlock(connection net.Conn, block *Block) error {
 			copy(buff[begin:], piece)
 			begin += len(piece)
 
-			fmt.Println(begin, len(buff), block.Length)
+			// fmt.Println(begin, len(buff), block.Length)
 
 			if err := c.requestBlock(connection, block.Index, begin, MaxBlockSize); err != nil {
 				return err
 			}
-			fmt.Println("Requested block")
+			// fmt.Println("Requested block")
 		}
 	}
 
 	if block.CheckHash(buff) {
-		fmt.Println("Coppied buff to block buffer")
+		// fmt.Println("Coppied buff to block buffer")
 		copy(block.Buffer, buff)
 	}
 
@@ -255,18 +255,20 @@ func (c *Client) Start(peer *Peer) error {
 
 	fmt.Println("Sent interested")
 
-	hash := c.Torrent.PieceHashes[0]
-	b := &Block{
-		Index: 0,
-		Length: c.Torrent.CalculatePieceSize(0), 
-		Hash: hash,
-	}
+	blocks := make([]Block, len(c.Torrent.PieceHashes))
 
-	if err := c.downloadBlock(connection, b); err != nil {
-		return err
-	}
+	for pieceIndex, pieceHash := range c.Torrent.PieceHashes {
+		b := blocks[pieceIndex]
+		b.Index = pieceIndex
+		b.Length = c.Torrent.CalculatePieceSize(pieceIndex)
+		b.Hash = pieceHash
 	
-	fmt.Println("Finished download")
+		if err := c.downloadBlock(connection, &b); err != nil {
+			return err
+		}
+		
+		fmt.Printf("Finished download: %d / %d \n", pieceIndex + 1, len(c.Torrent.PieceHashes))
+	}
 
 	return nil
 }
