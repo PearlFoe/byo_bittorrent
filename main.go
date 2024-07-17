@@ -22,14 +22,14 @@ func main() {
 		fmt.Println("Ошибка формирования ссылки:", err)
 	}
 
-	client := &p2p.Client{Url: url, Torrent: content}
-
-	
-	if err := client.RequestPeers(); err != nil {
+	tracker := &p2p.Tracker{Url: url}
+	peers, err := tracker.RequestPeers()
+	if err != nil {
 		fmt.Println("Ошибка получения пиров:", err)
 	}
-
-	if err := client.Start(&client.Peers[rand.Intn(len(client.Peers))]); err != nil {
+	
+	client := &p2p.Client{Torrent: content}
+	if err := client.Start(&peers[rand.Intn(len(peers))]); err != nil {
 		fmt.Println(err)
 	}
 	
