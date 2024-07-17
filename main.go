@@ -14,18 +14,18 @@ func main() {
 	err := content.ReadFile(filePath)
 
 	if err != nil {
-		fmt.Println("Ошибка парсинга файла:", err)
+		fmt.Println("Failed to parse file:", err)
 	}
 
 	url, err := content.BuildTrackerUrl()
 	if err != nil {
-		fmt.Println("Ошибка формирования ссылки:", err)
+		fmt.Println("Failed to build tracker ulr:", err)
 	}
 
 	tracker := &p2p.Tracker{Url: url}
 	peers, err := tracker.RequestPeers()
 	if err != nil {
-		fmt.Println("Ошибка получения пиров:", err)
+		fmt.Println("Failed to request peers list:", err)
 	}
 	
 	client := &p2p.Client{Torrent: content}

@@ -5,6 +5,8 @@ import (
 	"bytes"
 )
 
+const MaxBlockSize = 16384
+
 type Block struct {
 	Index  int
 	Length int

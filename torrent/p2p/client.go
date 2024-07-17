@@ -8,7 +8,6 @@ import (
 	"net"
 )
 
-const MaxBlockSize = 16384
 
 type Client struct {
 	Torrent *file.TorrentFile
