@@ -1,46 +1,43 @@
 package p2p
 
 import (
+	"byo_bittorrent/torrent/metadata/file"
 	"bytes"
+	"crypto/sha1"
 	"encoding/binary"
 	"fmt"
 	"net"
 	"net/http"
 	"time"
-	"crypto/sha1"
-	"byo_bittorrent/torrent/metadata/file"
 
 	bencode "github.com/jackpal/bencode-go"
 )
 
 const MaxBlockSize = 16384
 
-type PeersResponse struct {
+type PeersBencode struct {
 	Interval int    `bencode:"interval"`
 	Peers    string `bencode:"peers"`
 }
 
 type Client struct {
-	Url   string
+	Url     string
 	Torrent *file.TorrentFile
-	Peers []Peer
-	Choked bool
+	Peers   []Peer
+	Choked  bool
 }
-
 
 type Block struct {
-	Index int
+	Index  int
 	Length int
-	Hash [20]byte
+	Hash   [20]byte
 	Buffer []byte
 }
-
 
 func (b *Block) CheckHash(buffer []byte) bool {
 	hash := sha1.Sum(buffer)
 	return bytes.Equal(hash[:], b.Hash[:])
 }
-
 
 func (c *Client) unmarshalPeers(peerBencode string) ([]Peer, error) {
 	const peerSize = 6 // 4 for IP, 2 for port
@@ -67,7 +64,7 @@ func (c *Client) RequestPeers() error {
 	}
 	defer resp.Body.Close()
 
-	trackerResponse := &PeersResponse{}
+	trackerResponse := &PeersBencode{}
 
 	if err := bencode.Unmarshal(resp.Body, trackerResponse); err != nil {
 		return err
@@ -89,7 +86,7 @@ func (c *Client) sendHandshake(connection net.Conn) error {
 		InfoHash: c.Torrent.InfoHash,
 		PeerID:   c.Torrent.PeerID,
 	}
-	
+
 	if _, err := connection.Write(handshake.Serialize()); err != nil {
 		return err
 	}
@@ -106,7 +103,6 @@ func (c *Client) sendHandshake(connection net.Conn) error {
 	return nil
 }
 
-
 func (c *Client) waitBitfield(connection net.Conn) (*Bitfield, error) {
 	message, err := ReadMessage(connection)
 	if err != nil {
@@ -121,7 +117,6 @@ func (c *Client) waitBitfield(connection net.Conn) (*Bitfield, error) {
 	return &bf, nil
 }
 
-
 func (c *Client) waitUnchoke(connection net.Conn) error {
 	message, err := ReadMessage(connection)
 	if err != nil {
@@ -135,7 +130,6 @@ func (c *Client) waitUnchoke(connection net.Conn) error {
 	return nil
 }
 
-
 func (c *Client) sendInterested(connection net.Conn) error {
 	message := &Message{ID: MsgInterested}
 	if err := SendMessage(connection, message); err != nil {
@@ -143,7 +137,6 @@ func (c *Client) sendInterested(connection net.Conn) error {
 	}
 	return nil
 }
-
 
 func (c *Client) requestBlock(connection net.Conn, index, begin, length int) error {
 	payload := make([]byte, 12)
@@ -159,7 +152,6 @@ func (c *Client) requestBlock(connection net.Conn, index, begin, length int) err
 	return nil
 }
 
-
 func (c *Client) downloadBlock(connection net.Conn, block *Block) error {
 	if err := c.requestBlock(connection, block.Index, 0, MaxBlockSize); err != nil {
 		return err
@@ -169,7 +161,7 @@ func (c *Client) downloadBlock(connection net.Conn, block *Block) error {
 	begin := 0
 	buff := make([]byte, block.Length)
 
-	for begin < block.Length - 1{
+	for begin < block.Length-1 {
 		message, err := ReadMessage(connection)
 		if err != nil {
 			return err
@@ -177,11 +169,11 @@ func (c *Client) downloadBlock(connection net.Conn, block *Block) error {
 		// fmt.Println("Recieved message", message.ID)
 
 		switch message.ID {
-			case MsgChoke:
-				c.Choked = true
-			case MsgUnchoke:
-				c.Choked = false
-			default:
+		case MsgChoke:
+			c.Choked = true
+		case MsgUnchoke:
+			c.Choked = false
+		default:
 		}
 
 		if c.Choked {
@@ -213,7 +205,6 @@ func (c *Client) downloadBlock(connection net.Conn, block *Block) error {
 	return nil
 }
 
-
 func (c *Client) Start(peer *Peer) error {
 	fmt.Println("Connecting to peer", peer.String())
 
@@ -225,22 +216,21 @@ func (c *Client) Start(peer *Peer) error {
 
 	fmt.Println("Connected to peer", peer.String())
 
-
 	if err := c.sendHandshake(connection); err != nil {
 		return err
 	}
 
-	c.Choked = true 
+	c.Choked = true
 
 	fmt.Println("Handshaked peer", peer.String())
-	
+
 	bitfield, err := c.waitBitfield(connection)
 	if err != nil {
 		return err
 	}
-	
+
 	fmt.Println("Recieved bitfield", bitfield)
-	
+
 	// TODO: Find out why i get EOF sometimes
 	if err := c.waitUnchoke(connection); err != nil {
 		return err
@@ -248,7 +238,7 @@ func (c *Client) Start(peer *Peer) error {
 
 	c.Choked = false
 	fmt.Println("Unchoked")
-	
+
 	if err := c.sendInterested(connection); err != nil {
 		return err
 	}
@@ -262,12 +252,12 @@ func (c *Client) Start(peer *Peer) error {
 		b.Index = pieceIndex
 		b.Length = c.Torrent.CalculatePieceSize(pieceIndex)
 		b.Hash = pieceHash
-	
+
 		if err := c.downloadBlock(connection, &b); err != nil {
 			return err
 		}
-		
-		fmt.Printf("Finished download: %d / %d \n", pieceIndex + 1, len(c.Torrent.PieceHashes))
+
+		fmt.Printf("Finished download: %d / %d \n", pieceIndex+1, len(c.Torrent.PieceHashes))
 	}
 
 	return nil
