@@ -3,7 +3,6 @@ package p2p
 import (
 	"byo_bittorrent/torrent/metadata/file"
 	"bytes"
-	"crypto/sha1"
 	"encoding/binary"
 	"fmt"
 	"net"
@@ -14,18 +13,6 @@ const MaxBlockSize = 16384
 type Client struct {
 	Torrent *file.TorrentFile
 	Choked  bool
-}
-
-type Block struct {
-	Index  int
-	Length int
-	Hash   [20]byte
-	Buffer []byte
-}
-
-func (b *Block) CheckHash(buffer []byte) bool {
-	hash := sha1.Sum(buffer)
-	return bytes.Equal(hash[:], b.Hash[:])
 }
 
 func (c *Client) sendHandshake(connection net.Conn) error {
