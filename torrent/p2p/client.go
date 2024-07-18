@@ -140,7 +140,7 @@ func (c *Client) downloadBlock(connection net.Conn, block *Block) error {
 }
 
 
-func (c *Client) Start(peer *Peer) error {
+func (c *Client) Start(peer *Peer, toDownload, toSave chan Block) error {
 	fmt.Println("Connecting to peer", peer.String())
 
 	connection, err := net.Dial("tcp", peer.String())
@@ -179,19 +179,16 @@ func (c *Client) Start(peer *Peer) error {
 
 	fmt.Println("Sent interested")
 
-	blocks := make([]Block, len(c.Torrent.PieceHashes))
-
-	for pieceIndex, pieceHash := range c.Torrent.PieceHashes {
-		b := blocks[pieceIndex]
-		b.Index = pieceIndex
-		b.Length = c.Torrent.CalculatePieceSize(pieceIndex)
-		b.Hash = pieceHash
-
-		if err := c.downloadBlock(connection, &b); err != nil {
+	for len(toSave) < len(c.Torrent.PieceHashes) {
+		block := <- toDownload
+		if err := c.downloadBlock(connection, &block); err != nil {
 			return err
 		}
 
-		fmt.Printf("Finished download: %d / %d \n", pieceIndex+1, len(c.Torrent.PieceHashes))
+		if block.Buffer != nil {
+			toSave <- block
+			fmt.Printf("Finished download: %d / %d \n", block.Index + 1, len(c.Torrent.PieceHashes))
+		}
 	}
 
 	return nil

@@ -26,6 +26,7 @@ func generateSaveChannel(torrent *file.TorrentFile) chan p2p.Block{
 	return make(chan p2p.Block, len(torrent.PieceHashes))
 }
 
+
 func main() {
 	filePath := "data/debian.iso.torrent"
 	content := &file.TorrentFile{}
@@ -47,9 +48,11 @@ func main() {
 		fmt.Println("Failed to request peers list:", err)
 	}
 	
+	toDownload := generateDownloadChannel(content)
+	toSave := generateSaveChannel(content)
+
 	client := &p2p.Client{Torrent: content}
-	if err := client.Start(&peers[rand.Intn(len(peers))]); err != nil {
+	if err := client.Start(&peers[rand.Intn(len(peers))], toDownload, toSave); err != nil {
 		fmt.Println(err)
-	}
-	
+	}	
 }
