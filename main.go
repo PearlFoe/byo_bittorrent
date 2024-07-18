@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
+	"sync"
 	"byo_bittorrent/torrent/metadata/file"
 	"byo_bittorrent/torrent/p2p"
 )
@@ -51,8 +51,16 @@ func main() {
 	toDownload := generateDownloadChannel(content)
 	toSave := generateSaveChannel(content)
 
-	client := &p2p.Client{Torrent: content}
-	if err := client.Start(&peers[rand.Intn(len(peers))], toDownload, toSave); err != nil {
-		fmt.Println(err)
-	}	
+	var wg sync.WaitGroup
+	for _, peer := range peers {
+		wg.Add(1)
+
+		client := &p2p.Client{Torrent: content}
+		go client.Start(&peer, toDownload, toSave, &wg)
+		// if err := client.Start(&peers[rand.Intn(len(peers))], toDownload, toSave); err != nil {
+		// 	fmt.Println(err)
+		// }	
+	}
+	wg.Wait()
+	fmt.Println("All workers done")
 }

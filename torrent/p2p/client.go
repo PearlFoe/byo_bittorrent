@@ -1,11 +1,13 @@
 package p2p
 
 import (
-	"byo_bittorrent/torrent/metadata/file"
 	"bytes"
 	"encoding/binary"
 	"fmt"
 	"net"
+	"sync"
+
+	"byo_bittorrent/torrent/metadata/file"
 )
 
 
@@ -91,7 +93,7 @@ func (c *Client) downloadBlock(connection net.Conn, block *Block) error {
 		return err
 	}
 
-	fmt.Println("Requested block")
+	// fmt.Println("Requested block")
 	begin := 0
 	buff := make([]byte, block.Length)
 
@@ -140,7 +142,9 @@ func (c *Client) downloadBlock(connection net.Conn, block *Block) error {
 }
 
 
-func (c *Client) Start(peer *Peer, toDownload, toSave chan Block) error {
+func (c *Client) Start(peer *Peer, toDownload, toSave chan Block, wg *sync.WaitGroup) error {
+	defer wg.Done()
+
 	fmt.Println("Connecting to peer", peer.String())
 
 	connection, err := net.Dial("tcp", peer.String())
@@ -163,7 +167,7 @@ func (c *Client) Start(peer *Peer, toDownload, toSave chan Block) error {
 		return err
 	}
 
-	fmt.Println("Recieved bitfield", bitfield)
+	fmt.Println("Recieved bitfield")
 
 	// TODO: Find out why i get EOF sometimes
 	if err := c.waitUnchoke(connection); err != nil {
@@ -181,6 +185,10 @@ func (c *Client) Start(peer *Peer, toDownload, toSave chan Block) error {
 
 	for len(toSave) < len(c.Torrent.PieceHashes) {
 		block := <- toDownload
+		if !bitfield.HasPiece(block.Index) {
+			continue
+		}
+
 		if err := c.downloadBlock(connection, &block); err != nil {
 			return err
 		}
