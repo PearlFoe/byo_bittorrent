@@ -124,6 +124,7 @@ func (c *Client) downloadBlock(connection net.Conn, block *Block) error {
 			copy(buff[begin:], piece)
 			begin += len(piece)
 
+			// fmt.Printf("Block %d: %d %%\n", block.Index, len(buff) / block.Length * 100)
 			// fmt.Println(begin, len(buff), block.Length)
 
 			if err := c.requestBlock(connection, block.Index, begin, MaxBlockSize); err != nil {
@@ -134,7 +135,10 @@ func (c *Client) downloadBlock(connection net.Conn, block *Block) error {
 	}
 
 	if block.CheckHash(buff) {
-		// fmt.Println("Coppied buff to block buffer")
+		// fmt.Printf("Block %d: Coppied buff to block buffer\n", block.Index)
+		if block.Buffer == nil {
+			block.Buffer = make([]byte, block.Length)
+		}
 		copy(block.Buffer, buff)
 	}
 
@@ -193,7 +197,7 @@ func (c *Client) Start(peer *Peer, toDownload, toSave chan Block, wg *sync.WaitG
 			return err
 		}
 
-		if block.Buffer != nil {
+		if len(block.Buffer) > 0{
 			toSave <- block
 			fmt.Printf("Finished download: %d / %d \n", block.Index + 1, len(c.Torrent.PieceHashes))
 		}

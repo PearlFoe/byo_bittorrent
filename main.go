@@ -57,7 +57,7 @@ func main() {
 
 		client := &p2p.Client{Torrent: content}
 		go client.Start(&peer, toDownload, toSave, &wg)
-		// if err := client.Start(&peers[rand.Intn(len(peers))], toDownload, toSave); err != nil {
+		// if err := client.Start(&peer, toDownload, toSave, &wg); err != nil {
 		// 	fmt.Println(err)
 		// }	
 	}
