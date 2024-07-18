@@ -139,11 +139,11 @@ func (c *Client) downloadBlock(connection net.Conn, block *Block) error {
 	return nil
 }
 
+
 func (c *Client) Start(peer *Peer) error {
 	fmt.Println("Connecting to peer", peer.String())
 
-	// TODO: понять почему не работает с net.Dial
-	connection, err := net.Dial("tcp", peer.String()) //, 60*time.Second)
+	connection, err := net.Dial("tcp", peer.String())
 	if err != nil {
 		return err
 	}

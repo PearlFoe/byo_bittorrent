@@ -7,6 +7,25 @@ import (
 	"byo_bittorrent/torrent/p2p"
 )
 
+
+func generateDownloadChannel(torrent *file.TorrentFile) chan p2p.Block{
+	blocks := make(chan p2p.Block, len(torrent.PieceHashes))
+
+	for hashIndex, hash := range torrent.PieceHashes {
+		blocks <- p2p.Block{
+			Index: hashIndex,
+			Length: torrent.CalculatePieceSize(hashIndex),
+			Hash: hash,
+		}
+	} 
+	return blocks
+}
+
+
+func generateSaveChannel(torrent *file.TorrentFile) chan p2p.Block{
+	return make(chan p2p.Block, len(torrent.PieceHashes))
+}
+
 func main() {
 	filePath := "data/debian.iso.torrent"
 	content := &file.TorrentFile{}
