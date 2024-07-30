@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"time"
 
 	"byo_bittorrent/torrent/metadata/file"
 )
@@ -59,7 +60,7 @@ func (c *Client) waitUnchoke(connection net.Conn) error {
 		return err
 	}
 
-	if message.ID != MsgUnchoke {
+	if message != nil && message.ID != MsgUnchoke {
 		return fmt.Errorf("recieved invalid message code %d, expected %d", message.ID, MsgUnchoke)
 	}
 
@@ -151,10 +152,11 @@ func (c *Client) Start(peer *Peer, toDownload, toSave chan Block, wg *sync.WaitG
 
 	fmt.Println("Connecting to peer", peer.String())
 
-	connection, err := net.Dial("tcp", peer.String())
+	connection, err := net.DialTimeout("tcp", peer.String(), 60*time.Second)
 	if err != nil {
 		return err
 	}
+	defer connection.Close()
 
 	fmt.Println("Connected to peer", peer.String())
 
