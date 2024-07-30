@@ -60,7 +60,7 @@ func (c *Client) waitUnchoke(connection net.Conn) error {
 		return err
 	}
 
-	if message != nil && message.ID != MsgUnchoke {
+	if message.ID != MsgUnchoke {
 		return fmt.Errorf("recieved invalid message code %d, expected %d", message.ID, MsgUnchoke)
 	}
 

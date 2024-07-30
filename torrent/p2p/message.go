@@ -53,29 +53,31 @@ func (m *Message) ParsePiece(pieceIndex int) ([]byte, error) {
 
 
 func ReadMessage(r io.Reader) (*Message, error) {
-	lengthBuffer := make([]byte, 4)
-	if _, err := io.ReadFull(r, lengthBuffer); err != nil {
-		return nil, err
+	for ;; {
+		lengthBuffer := make([]byte, 4)
+		if _, err := io.ReadFull(r, lengthBuffer); err != nil {
+			return nil, err
+		}
+	
+		messageLength := binary.BigEndian.Uint32(lengthBuffer)
+	
+		// keep-alive message
+		if messageLength == 0 {
+			continue
+		}
+	
+		messageBuffer := make([]byte, messageLength)
+		if _, err := io.ReadFull(r, messageBuffer); err != nil {
+			return nil, err
+		}
+	
+		message := Message{
+			ID: messageID(messageBuffer[0]),
+			Payload: messageBuffer[1:],
+		}
+	
+		return &message, nil
 	}
-
-	messageLength := binary.BigEndian.Uint32(lengthBuffer)
-
-	// keep-alive message
-	if messageLength == 0 {
-		return nil, nil
-	}
-
-	messageBuffer := make([]byte, messageLength)
-	if _, err := io.ReadFull(r, messageBuffer); err != nil {
-		return nil, err
-	}
-
-	message := Message{
-		ID: messageID(messageBuffer[0]),
-		Payload: messageBuffer[1:],
-	}
-
-	return &message, nil
 }
 
 
