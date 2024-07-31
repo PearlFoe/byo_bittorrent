@@ -189,7 +189,7 @@ func (c *Client) Start(peer *Peer, toDownload, toSave chan Block, wg *sync.WaitG
 
 	fmt.Println("Sent interested")
 
-	for len(toSave) < len(c.Torrent.PieceHashes) {
+	for len(toDownload) > 0 {
 		block := <- toDownload
 		if !bitfield.HasPiece(block.Index) {
 			continue
