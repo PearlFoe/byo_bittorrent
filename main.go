@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 	"byo_bittorrent/torrent/metadata/file"
+	"byo_bittorrent/torrent/storage"
 	"byo_bittorrent/torrent/p2p"
 )
 
@@ -58,6 +59,12 @@ func main() {
 		client := &p2p.Client{Torrent: content}
 		go client.Start(&peer, toDownload, toSave, &wg)
 	}
+
+	writer := &storage.Writer{Torrent: content}
+
+	writer.Write(toSave)
+
 	wg.Wait()
+
 	fmt.Println("All workers done")
 }

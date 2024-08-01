@@ -149,7 +149,7 @@ func (c *Client) downloadBlock(connection net.Conn, block *Block) error {
 
 func (c *Client) Start(peer *Peer, toDownload, toSave chan Block, wg *sync.WaitGroup) error {
 	defer wg.Done()
-
+	
 	fmt.Println("Connecting to peer", peer.String())
 
 	connection, err := net.DialTimeout("tcp", peer.String(), 60*time.Second)
