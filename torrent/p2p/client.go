@@ -192,10 +192,12 @@ func (c *Client) Start(peer *Peer, toDownload, toSave chan Block, wg *sync.WaitG
 	for len(toDownload) > 0 {
 		block := <- toDownload
 		if !bitfield.HasPiece(block.Index) {
+			toDownload <- block
 			continue
 		}
 
 		if err := c.downloadBlock(connection, &block); err != nil {
+			toDownload <- block
 			return err
 		}
 
