@@ -20,3 +20,15 @@ func (bf Bitfield) SetPiece(index int) {
 	}
 	bf[byteIndex] |= 1 << uint(7 - offset)
 }
+
+func (bf Bitfield) CountDownloaded() int {
+	sum := 0
+	for i := 0; i < len(bf); i++ {
+		sum += int(bf[i])
+	}
+	return sum
+}
+
+func (bf Bitfield) Lenght() int {
+	return len(bf)
+}

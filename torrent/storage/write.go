@@ -11,6 +11,7 @@ import (
 
 type Writer struct {
 	Torrent *file.TorrentFile
+	Bitfield p2p.Bitfield
 }
 
 func (w *Writer) fileName() string {
@@ -31,8 +32,14 @@ func (w *Writer) saveBlock(file *os.File, block *p2p.Block) error {
 	return nil
 }
 
+func (w *Writer) createBitfield() {
+	w.Bitfield = make([]byte, w.Torrent.Length)
+}
+
 func (w *Writer) Write(blocks chan p2p.Block) error {
 	fmt.Println("FILE PATH:", w.fileName())
+
+	w.createBitfield()
 
 	file, err := os.OpenFile(
 		w.fileName(), 
@@ -52,6 +59,7 @@ func (w *Writer) Write(blocks chan p2p.Block) error {
 			// if failed to write block to file, return block to the channel
 			blocks <- block
 		} else {
+			w.Bitfield.SetPiece(block.Index)
 			wroteBlocks += 1
 		}
 	}
