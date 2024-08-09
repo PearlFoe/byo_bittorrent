@@ -36,7 +36,7 @@ func (w *Writer) saveBlock(file *os.File, block *p2p.Block) error {
 }
 
 func (w *Writer) CreateBitfield() {
-	w.Bitfield = make([]byte, w.Torrent.Length)
+	w.Bitfield = make([]byte, len(w.Torrent.PieceHashes))
 }
 
 func (w *Writer) Write(blocks chan p2p.Block) {

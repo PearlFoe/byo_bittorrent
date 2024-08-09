@@ -23,8 +23,10 @@ func (bf Bitfield) SetPiece(index int) {
 
 func (bf Bitfield) CountDownloaded() int {
 	sum := 0
-	for i := 0; i < len(bf); i++ {
-		sum += int(bf[i])
+	for i := 0; i < len(bf) * 8; i++ {
+		if bf.HasPiece(i) {
+			sum += 1
+		}
 	}
 	return sum
 }

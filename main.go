@@ -77,12 +77,13 @@ func main() {
 	}
 
 	writer := &storage.Writer{Torrent: content}
-	progressBar := &cli.ProgressBar{Bitfield: &writer.Bitfield}
-
 	writer.CreateBitfield()
-	progressBar.Start()
-	writer.Write(toSave)
 
+	progressBar := &cli.ProgressBar{Bitfield: &writer.Bitfield}
+	go progressBar.Start()
+
+	writer.Write(toSave)
+	
 	wg.Wait()
 
 	fmt.Println("All workers done")
