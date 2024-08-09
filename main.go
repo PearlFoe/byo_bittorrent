@@ -2,10 +2,15 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
+
+	"byo_bittorrent/cli"
 	"byo_bittorrent/torrent/metadata/file"
-	"byo_bittorrent/torrent/storage"
 	"byo_bittorrent/torrent/p2p"
+	"byo_bittorrent/torrent/storage"
 )
 
 
@@ -30,23 +35,34 @@ func generateSaveChannel(torrent *file.TorrentFile) chan p2p.Block{
 
 func main() {
 	filePath := "data/debian.iso.torrent"
-	content := &file.TorrentFile{}
 
-	err := content.ReadFile(filePath)
-
+	logFile, err := os.OpenFile("logs/main.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
-		fmt.Println("Failed to parse file:", err)
+		fmt.Println(err)
+	}
+	defer logFile.Close()
+
+	log.SetOutput(logFile)
+	log.SetFormatter(&log.TextFormatter{})
+	log.SetLevel(log.InfoLevel)
+
+	content := &file.TorrentFile{}
+	if err := content.ReadFile(filePath); err != nil {
+		log.Error("Failed to parse file:", err)
+		return
 	}
 
 	url, err := content.BuildTrackerUrl()
 	if err != nil {
-		fmt.Println("Failed to build tracker ulr:", err)
+		log.Error("Failed to build tracker ulr:", err)
+		return
 	}
 
 	tracker := &p2p.Tracker{Url: url}
 	peers, err := tracker.RequestPeers()
 	if err != nil {
-		fmt.Println("Failed to request peers list:", err)
+		log.Error("Failed to request peers list:", err)
+		return
 	}
 	
 	toDownload := generateDownloadChannel(content)
@@ -61,6 +77,9 @@ func main() {
 	}
 
 	writer := &storage.Writer{Torrent: content}
+	progressBar := &cli.ProgressBar{Bitfield: &writer.Bitfield}
+
+	progressBar.Start()
 
 	writer.Write(toSave)
 

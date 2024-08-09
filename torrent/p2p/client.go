@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"byo_bittorrent/torrent/metadata/file"
 )
 
@@ -94,7 +96,6 @@ func (c *Client) downloadBlock(connection net.Conn, block *Block) error {
 		return err
 	}
 
-	// fmt.Println("Requested block")
 	begin := 0
 	buff := make([]byte, block.Length)
 
@@ -103,7 +104,6 @@ func (c *Client) downloadBlock(connection net.Conn, block *Block) error {
 		if err != nil {
 			return err
 		}
-		// fmt.Println("Recieved message", message.ID)
 
 		switch message.ID {
 		case MsgChoke:
@@ -125,18 +125,13 @@ func (c *Client) downloadBlock(connection net.Conn, block *Block) error {
 			copy(buff[begin:], piece)
 			begin += len(piece)
 
-			// fmt.Printf("Block %d: %d %%\n", block.Index, len(buff) / block.Length * 100)
-			// fmt.Println(begin, len(buff), block.Length)
-
 			if err := c.requestBlock(connection, block.Index, begin, MaxBlockSize); err != nil {
 				return err
 			}
-			// fmt.Println("Requested block")
 		}
 	}
 
 	if block.CheckHash(buff) {
-		// fmt.Printf("Block %d: Coppied buff to block buffer\n", block.Index)
 		if block.Buffer == nil {
 			block.Buffer = make([]byte, block.Length)
 		}
@@ -147,47 +142,52 @@ func (c *Client) downloadBlock(connection net.Conn, block *Block) error {
 }
 
 
-func (c *Client) Start(peer *Peer, toDownload, toSave chan Block, wg *sync.WaitGroup) error {
+func (c *Client) Start(peer *Peer, toDownload, toSave chan Block, wg *sync.WaitGroup) {
 	defer wg.Done()
 	
-	fmt.Println("Connecting to peer", peer.String())
+	log.Info("Connecting to peer", peer.String())
 
 	connection, err := net.DialTimeout("tcp", peer.String(), 60*time.Second)
 	if err != nil {
-		return err
+		log.Warn(err)
+		return
 	}
 	defer connection.Close()
 
-	fmt.Println("Connected to peer", peer.String())
+	log.Info("Connected to peer", peer.String())
 
 	if err := c.sendHandshake(connection); err != nil {
-		return err
+		log.Warn(err)
+		return
 	}
 
 	c.Choked = true
 
-	fmt.Println("Handshaked peer", peer.String())
+	log.Info("Handshaked peer", peer.String())
 
 	bitfield, err := c.waitBitfield(connection)
 	if err != nil {
-		return err
+		log.Warn(err)
+		return
 	}
 
-	fmt.Println("Recieved bitfield")
+	log.Info("Recieved bitfield")
 
 	// TODO: Find out why i get EOF sometimes
 	if err := c.waitUnchoke(connection); err != nil {
-		return err
+		log.Warn(err)
+		return
 	}
 
 	c.Choked = false
-	fmt.Println("Unchoked")
+	log.Info("Unchoked")
 
 	if err := c.sendInterested(connection); err != nil {
-		return err
+		log.Warn(err)
+		return
 	}
 
-	fmt.Println("Sent interested")
+	log.Info("Sent interested")
 
 	for len(toDownload) > 0 {
 		block := <- toDownload
@@ -198,14 +198,13 @@ func (c *Client) Start(peer *Peer, toDownload, toSave chan Block, wg *sync.WaitG
 
 		if err := c.downloadBlock(connection, &block); err != nil {
 			toDownload <- block
-			return err
+			log.Warn(err)
+			return
 		}
 
 		if len(block.Buffer) > 0{
 			toSave <- block
-			fmt.Printf("Finished download: %d / %d \n", block.Index + 1, len(c.Torrent.PieceHashes))
+			log.Printf("Finished download: %d / %d \n", block.Index + 1, len(c.Torrent.PieceHashes))
 		}
 	}
-
-	return nil
 }

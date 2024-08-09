@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	log "github.com/sirupsen/logrus"
+
 	"byo_bittorrent/torrent/metadata/file"
 	"byo_bittorrent/torrent/p2p"
 )
@@ -28,7 +30,7 @@ func (w *Writer) saveBlock(file *os.File, block *p2p.Block) error {
 	if _, err := file.WriteAt(block.Buffer, offset); err != nil {
 		return fmt.Errorf("failed to write block: %s", err)
 	}
-	fmt.Println("Wrote block", block.Index)
+	log.Info("Wrote block", block.Index)
 	return nil
 }
 
@@ -36,8 +38,8 @@ func (w *Writer) createBitfield() {
 	w.Bitfield = make([]byte, w.Torrent.Length)
 }
 
-func (w *Writer) Write(blocks chan p2p.Block) error {
-	fmt.Println("FILE PATH:", w.fileName())
+func (w *Writer) Write(blocks chan p2p.Block) {
+	log.Info("FILE PATH:", w.fileName())
 
 	w.createBitfield()
 
@@ -63,6 +65,4 @@ func (w *Writer) Write(blocks chan p2p.Block) error {
 			wroteBlocks += 1
 		}
 	}
-
-	return nil
 }
