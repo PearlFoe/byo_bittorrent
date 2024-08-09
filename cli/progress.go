@@ -1,10 +1,11 @@
 package cli
 
 import (
-	"byo_bittorrent/torrent/p2p"
 	"time"
 
 	pb "github.com/schollz/progressbar/v3"
+
+	"byo_bittorrent/torrent/p2p"
 )
 
 type ProgressBar struct {

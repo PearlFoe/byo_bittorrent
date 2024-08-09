@@ -19,6 +19,7 @@ type Writer struct {
 func (w *Writer) fileName() string {
 	cwd, err := os.Getwd()
 	if err != nil {
+		log.Error(err)
 		panic(err)
 	}
 	return filepath.Join(cwd, w.Torrent.Name)
@@ -34,14 +35,12 @@ func (w *Writer) saveBlock(file *os.File, block *p2p.Block) error {
 	return nil
 }
 
-func (w *Writer) createBitfield() {
+func (w *Writer) CreateBitfield() {
 	w.Bitfield = make([]byte, w.Torrent.Length)
 }
 
 func (w *Writer) Write(blocks chan p2p.Block) {
-	log.Info("FILE PATH:", w.fileName())
-
-	w.createBitfield()
+	log.Println("FILE PATH:", w.fileName())
 
 	file, err := os.OpenFile(
 		w.fileName(), 
@@ -49,6 +48,7 @@ func (w *Writer) Write(blocks chan p2p.Block) {
 		0644,
 	)
     if err != nil {
+		log.Error(err)
         panic(err)
     }
 	defer file.Close()
