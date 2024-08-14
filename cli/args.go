@@ -5,20 +5,16 @@ import (
 	"fmt"
 )
 
-
 type Args struct {
 	TorrentFile string
-	SaveDir string
+	SaveDir     string
 }
 
-
-func HandleArgs() (*Args, error) {
+func ParseArgs() (*Args, error) {
 	var torrentFile string
-	flag.StringVar(&torrentFile, "torrent", "", "Path to torrent file")
 	flag.StringVar(&torrentFile, "t", "", "Path to torrent file")
 
 	var saveDir string
-	flag.StringVar(&saveDir, "save", "", "Path to dir where result should be saved")
 	flag.StringVar(&saveDir, "s", "", "Path to dir where result should be saved")
 
 	flag.Parse()

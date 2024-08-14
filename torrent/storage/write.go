@@ -14,15 +14,11 @@ import (
 type Writer struct {
 	Torrent *file.TorrentFile
 	Bitfield p2p.Bitfield
+	SaveDir string
 }
 
 func (w *Writer) fileName() string {
-	cwd, err := os.Getwd()
-	if err != nil {
-		log.Error(err)
-		panic(err)
-	}
-	return filepath.Join(cwd, w.Torrent.Name)
+	return filepath.Join(w.SaveDir, w.Torrent.Name)
 }
 
 func (w *Writer) saveBlock(file *os.File, block *p2p.Block) error {

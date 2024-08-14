@@ -13,29 +13,24 @@ import (
 	"byo_bittorrent/torrent/storage"
 )
 
-
-func generateDownloadChannel(torrent *file.TorrentFile) chan p2p.Block{
+func generateDownloadChannel(torrent *file.TorrentFile) chan p2p.Block {
 	blocks := make(chan p2p.Block, len(torrent.PieceHashes))
 
 	for hashIndex, hash := range torrent.PieceHashes {
 		blocks <- p2p.Block{
-			Index: hashIndex,
+			Index:  hashIndex,
 			Length: torrent.CalculatePieceSize(hashIndex),
-			Hash: hash,
+			Hash:   hash,
 		}
-	} 
+	}
 	return blocks
 }
 
-
-func generateSaveChannel(torrent *file.TorrentFile) chan p2p.Block{
+func generateSaveChannel(torrent *file.TorrentFile) chan p2p.Block {
 	return make(chan p2p.Block, len(torrent.PieceHashes))
 }
 
-
 func main() {
-	filePath := "data/debian.iso.torrent"
-
 	logFile, err := os.OpenFile("logs/main.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		fmt.Println(err)
@@ -46,8 +41,14 @@ func main() {
 	log.SetFormatter(&log.TextFormatter{})
 	log.SetLevel(log.InfoLevel)
 
+	args, err := cli.ParseArgs()
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
 	content := &file.TorrentFile{}
-	if err := content.ReadFile(filePath); err != nil {
+	if err := content.ReadFile(args.TorrentFile); err != nil {
 		log.Error("Failed to parse file:", err)
 		return
 	}
@@ -64,7 +65,7 @@ func main() {
 		log.Error("Failed to request peers list:", err)
 		return
 	}
-	
+
 	toDownload := generateDownloadChannel(content)
 	toSave := generateSaveChannel(content)
 
@@ -76,14 +77,14 @@ func main() {
 		go client.Start(&peer, toDownload, toSave, &wg)
 	}
 
-	writer := &storage.Writer{Torrent: content}
+	writer := &storage.Writer{Torrent: content, SaveDir: args.SaveDir}
 	writer.CreateBitfield()
 
 	progressBar := &cli.ProgressBar{Bitfield: &writer.Bitfield}
 	go progressBar.Start()
 
 	writer.Write(toSave)
-	
+
 	wg.Wait()
 
 	fmt.Println("All workers done")
